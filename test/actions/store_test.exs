@@ -44,6 +44,14 @@ defmodule ArcTest.Actions.Store do
     end
   end
 
+  test "accepts remote files" do
+    with_mock Arc.Storage.S3, [put: fn(DummyDefinition, _, {%{file_name: "image.png", path: _}, nil}) -> {:ok, "resp"} end] do
+      with_mock :httpc, [request: fn(:get, {'http://example.com/image.png', []}, [], []) -> {:ok, {{'HTTP/1.1', nil, nil}, nil, File.read!(@img)}} end] do
+        assert DummyDefinition.store("http://example.com/image.png") == {:ok, "image.png"}
+      end
+    end
+  end
+
   test "error from ExAws on upload to S3" do
     with_mock Arc.Storage.S3, [put: fn(DummyDefinition, _, {%{file_name: "image.png", path: @img}, :scope}) -> {:error, {:http_error, 404, "XML"}} end] do
       assert DummyDefinition.store({%{filename: "image.png", path: @img}, :scope}) == {:error, [{:http_error, 404, "XML"}, {:http_error, 404, "XML"}]}
